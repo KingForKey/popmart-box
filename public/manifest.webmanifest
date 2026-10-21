@@ -1,0 +1,17 @@
+{
+  "name": "娃柜 - 我的盲盒收藏",
+  "short_name": "娃柜",
+  "description": "记录盲盒入库、卖出与交换，管理你的娃收藏",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FDF8F6",
+  "theme_color": "#FF7BA9",
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

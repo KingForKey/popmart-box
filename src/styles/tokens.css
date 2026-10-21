@@ -1,0 +1,50 @@
+/* 主题变量 + 全局基础样式 */
+
+:root {
+  --bg: #FDF8F6;
+  --card: #FFFFFF;
+  --primary: #FF7BA9;
+  --accent: #A78BFA;
+  --text: #2D2A32;
+  --muted: #9B96A3;
+  --gold: #F5B942;
+  --success: #34C77B;
+  --danger: #FF5A5F;
+  --radius: 18px;
+  /* 统一卡片阴影与主按钮渐变（视觉打磨） */
+  --shadow-card: 0 2px 12px rgba(255, 123, 169, 0.08);
+  --grad-primary: linear-gradient(135deg, #FF7BA9, #A78BFA);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  /* 数字全局等宽，金额/日期/统计对齐 */
+  font-variant-numeric: tabular-nums;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+  touch-action: manipulation;
+}
