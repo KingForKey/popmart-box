@@ -44,9 +44,11 @@ function maybeAutoBackup(db) {
   if (products.length === 0 && records.length === 0) return
   const images = {}
   for (const p of products) {
-    if (!p.imageKey) continue
-    const data = localStorage.getItem(IMG_PREFIX + p.imageKey)
-    if (data) images[p.imageKey] = data
+    const keys = getProductGalleryKeys(p)
+    for (const k of keys) {
+      const data = localStorage.getItem(IMG_PREFIX + k)
+      if (data && !images[k]) images[k] = data
+    }
   }
   const snap = {
     app: 'popmart-box',
@@ -107,7 +109,7 @@ export function getProductById(id) {
 export function addProduct(data) {
   return new Promise((resolve) => {
     const db = readDB()
-    const product = { ...data, id: genId() }
+    const product = normalizeProductGallery({ ...data, id: genId() })
     db.products.push(product)
     writeDB(db)
     resolve(product)
@@ -122,7 +124,7 @@ export function updateProduct(id, patch) {
       resolve(null)
       return
     }
-    db.products[idx] = { ...db.products[idx], ...patch }
+    db.products[idx] = normalizeProductGallery({ ...db.products[idx], ...patch })
     writeDB(db)
     resolve(db.products[idx])
   })
@@ -176,7 +178,11 @@ export function deleteRecord(id) {
   })
 }
 
-// ---------- 图片（dataURL 存独立 key，避免撑大主库） ----------
+// 图片相关：dataURL 存独立 key，避免撑大主库
+
+export function newImageKey() {
+  return 'img_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+}
 
 export function getImage(key) {
   return new Promise((resolve) => {
@@ -200,6 +206,34 @@ export function deleteImage(key) {
     localStorage.removeItem(IMG_PREFIX + key)
     resolve()
   })
+}
+
+// 取产品的全部图片 key：优先 galleryKeys，回退旧 imageKey，兼容老数据
+export function getProductGalleryKeys(product) {
+  if (!product) return []
+  if (Array.isArray(product.galleryKeys)) {
+    return product.galleryKeys.filter(Boolean)
+  }
+  if (product.imageKey) return [product.imageKey]
+  return []
+}
+
+// 同步 imageKey 与 galleryKeys：imageKey 始终是 galleryKeys[0]
+// 调用方传入 { imageKey, galleryKeys } 其中一个，自动补齐另一个
+export function normalizeProductGallery(productLike) {
+  const out = { ...productLike }
+  if (!Array.isArray(out.galleryKeys)) out.galleryKeys = []
+  if (out.imageKey && out.galleryKeys.indexOf(out.imageKey) < 0) {
+    out.galleryKeys.unshift(out.imageKey)
+  } else if (out.galleryKeys[0] && !out.imageKey) {
+    out.imageKey = out.galleryKeys[0]
+  }
+  // imageKey 是 galleryKeys[0] 的权威来源
+  if (out.galleryKeys[0]) out.imageKey = out.galleryKeys[0]
+  else out.imageKey = null
+  // rarity 默认为空字符串（普通款）
+  out.rarity = (out.rarity || '').trim() || ''
+  return out
 }
 
 // ---------- 来源平台（标签池，可手动管理） ----------
@@ -299,15 +333,29 @@ export function setNickname(name) {
 // ---------- 备份：整库导出 / 导入 ----------
 
 // 导出全部数据（含被引用的图片 dataURL），纯 JSON 可序列化
+// 向后兼容：新版本同时写 imageKey + galleryKeys，老版本读取时只认 imageKey 不受影响
+// 图片收集策略：先收产品引用到的 key，再补扫 localStorage 里所有 popmart_img_ 图片，
+// 确保即使存在未被产品引用的图片（如合并入库时的历史图）也不会在备份中丢失。
 export function exportAll() {
   return new Promise((resolve) => {
     const db = readDB()
     const images = {}
     for (const p of db.products) {
-      if (p.imageKey) {
-        const dataUrl = localStorage.getItem(IMG_PREFIX + p.imageKey)
-        if (dataUrl) images[p.imageKey] = dataUrl
+      const keys = getProductGalleryKeys(p)
+      for (const k of keys) {
+        if (!k || images[k]) continue
+        const dataUrl = localStorage.getItem(IMG_PREFIX + k)
+        if (dataUrl) images[k] = dataUrl
       }
+    }
+    // 补扫：localStorage 里所有已存图片（弹出孤儿图，保证「图片一起导出」）
+    for (let i = 0; i < localStorage.length; i++) {
+      const fullKey = localStorage.key(i)
+      if (!fullKey || fullKey.indexOf(IMG_PREFIX) !== 0) continue
+      const k = fullKey.slice(IMG_PREFIX.length)
+      if (images[k]) continue
+      const dataUrl = localStorage.getItem(fullKey)
+      if (dataUrl) images[k] = dataUrl
     }
     resolve({
       app: 'popmart-box',

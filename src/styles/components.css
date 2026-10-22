@@ -1,4 +1,4 @@
-/* 共享组件样式：Sheet 弹窗 / 操作菜单 / 确认框 / 详情 / 商品卡片 */
+﻿﻿/* 共享组件样式：Sheet 弹窗 / 操作菜单 / 确认框 / 详情 / 商品卡片 */
 
 /* ---------- Sheet 通用底部弹窗 ---------- */
 
@@ -147,7 +147,7 @@
   min-height: 44px;
   border: none;
   border-radius: 12px;
-  background: #F2EEF1;
+  background: rgba(184, 149, 122, 0.08);
   color: var(--text);
   font-size: 15px;
   cursor: pointer;
@@ -165,11 +165,145 @@
 
 /* ---------- 款式详情 ---------- */
 
+/* ---------- 款式详情 ---------- */
+
+.detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* 图片画廊轮播 */
+.detail-gallery {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.detail-gallery-img {
+  position: relative;
+  width: 100%;
+  padding-top: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: rgba(184, 149, 122, 0.08);
+}
+
+.detail-gallery-img img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-gallery-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: transform 0.12s ease;
+}
+
+.detail-gallery-btn:active {
+  transform: translateY(-50%) scale(0.9);
+}
+
+.detail-gallery-btn.left {
+  left: 8px;
+}
+
+.detail-gallery-btn.right {
+  right: 8px;
+}
+
+.detail-gallery-dots {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  z-index: 2;
+}
+
+.detail-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.45);
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.detail-dot.active {
+  background: #fff;
+  transform: scale(1.3);
+}
+
+.detail-gallery-counter {
+  position: absolute;
+  bottom: 6px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  z-index: 2;
+}
+
 .detail-name {
   font-size: 17px;
   font-weight: 600;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
   line-height: 1.4;
+}
+
+.detail-rarity {
+  display: inline-block;
+  background: var(--star);
+  color: #8C7030;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.detail-rarity.ultra {
+  background: linear-gradient(135deg, #D5B866, #E8B4B8);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(213, 184, 102, 0.35);
+}
+
+.detail-note {
+  margin-top: 8px;
+  align-items: flex-start;
+}
+
+.detail-note span:last-child {
+  max-width: 70%;
+  text-align: right;
+  color: var(--text);
+  white-space: pre-wrap;
+  line-height: 1.5;
 }
 
 .detail-row {
@@ -202,7 +336,7 @@
 .detail-cond-children {
   margin: 2px 0 6px;
   padding-left: 10px;
-  border-left: 2px solid rgba(167, 139, 250, 0.35);
+  border-left: 2px solid rgba(232, 180, 184, 0.35);
 }
 
 .detail-cond-num {
@@ -225,24 +359,24 @@
 
 .cond-tag {
   display: inline-block;
-  background: rgba(167, 139, 250, 0.12);
-  color: var(--accent);
+  background: rgba(232, 180, 184, 0.22);
+  color: var(--primary);
   font-size: 11px;
   line-height: 1;
   font-weight: 500;
-  padding: 4px 7px;
-  border-radius: 7px;
+  padding: 4px 8px;
+  border-radius: 10px;
   white-space: nowrap;
 }
 
 .cond-tag.channel {
-  background: rgba(255, 123, 169, 0.12);
+  background: rgba(184, 149, 122, 0.18);
   color: var(--primary);
 }
 
 .cond-tag.presale {
-  background: rgba(245, 185, 66, 0.15);
-  color: #C98F1B;
+  background: rgba(247, 214, 132, 0.32);
+  color: #8C7030;
 }
 
 /* ---------- 商品卡片 ---------- */
@@ -251,7 +385,7 @@
   background: var(--card);
   border-radius: var(--radius);
   padding: 10px;
-  border: 1px solid rgba(255, 123, 169, 0.06);
+  border: 1px solid rgba(184, 149, 122, 0.08);
   box-shadow: var(--shadow-card);
   user-select: none;
   -webkit-user-select: none;
@@ -260,10 +394,10 @@
   transition: opacity 0.2s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* 按下/长按期间轻微缩放 */
+/* 按下/长按期间轻微缩放 + 提升阴影，像被捏了一下 */
 .product-card:active {
-  transform: scale(0.98);
-  box-shadow: 0 1px 6px rgba(255, 123, 169, 0.1);
+  transform: scale(0.97);
+  box-shadow: 0 2px 8px rgba(184, 149, 122, 0.18);
 }
 
 .product-card.empty {
@@ -276,7 +410,7 @@
   padding-top: 100%;
   border-radius: var(--radius);
   overflow: hidden;
-  background: #F2EEF1;
+  background: rgba(184, 149, 122, 0.08);
 }
 
 .product-card-img img {
@@ -294,7 +428,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 32px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--muted);
   opacity: 0.7;
 }
@@ -303,13 +437,33 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  background: var(--gold);
-  color: #fff;
+  background: var(--star);
+  color: #8C7030;
   font-size: 11px;
   line-height: 1;
   font-weight: 600;
   padding: 4px 8px;
-  border-radius: 8px;
+  border-radius: 10px;
+}
+
+.product-card-secret.ultra {
+  background: linear-gradient(135deg, #D5B866, #E8B4B8);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(213, 184, 102, 0.35);
+}
+
+.product-card-badge {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  line-height: 1.3;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
 .product-card-name {
@@ -358,7 +512,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 1px solid rgba(45, 42, 50, 0.12);
+  border: 1px solid rgba(184, 149, 122, 0.14);
   background: var(--card);
   color: var(--muted);
   font-size: 20px;
@@ -367,6 +521,96 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 1px 3px rgba(184, 149, 122, 0.08);
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.product-card-minus:active {
+  transform: scale(0.92);
+  background: rgba(184, 149, 122, 0.08);
+}
+
+/* ---------- Density 变体 ---------- */
+
+.product-card.density-cozy {
+  padding: 7px;
+  border-radius: calc(var(--radius) - 4px);
+}
+
+.product-card.density-cozy .product-card-img {
+  border-radius: calc(var(--radius) - 6px);
+}
+
+.product-card.density-cozy .product-card-name {
+  margin-top: 6px;
+  font-size: 13px;
+  min-height: 36px;
+  -webkit-line-clamp: 2;
+}
+
+.product-card.density-cozy .product-card-series {
+  font-size: 11px;
+}
+
+.product-card.density-cozy .product-card-stock {
+  font-size: 16px;
+}
+
+.product-card.density-cozy .product-card-bottom {
+  margin-top: 6px;
+}
+
+.product-card.density-cozy .product-card-minus {
+  width: 30px;
+  height: 30px;
+  font-size: 16px;
+}
+
+.product-card.density-cozy .product-card-secret {
+  font-size: 10px;
+  padding: 3px 6px;
+}
+
+.product-card.density-cozy .product-card-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+.product-card.density-snug {
+  padding: 5px;
+  border-radius: calc(var(--radius) - 8px);
+}
+
+.product-card.density-snug .product-card-img {
+  padding-top: 92%;
+  border-radius: calc(var(--radius) - 10px);
+}
+
+.product-card.density-snug .product-card-name {
+  margin-top: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  min-height: 16px;
+  -webkit-line-clamp: 1;
+  text-align: center;
+}
+
+.product-card.density-snug .product-card-char {
+  font-size: 24px;
+}
+
+.product-card.density-snug .product-card-secret {
+  font-size: 9px;
+  padding: 2px 5px;
+  top: 5px;
+  right: 5px;
+}
+
+.product-card.density-snug .product-card-badge {
+  bottom: 4px;
+  right: 4px;
+  font-size: 9px;
+  padding: 2px 5px;
 }
 
 /* 扩大点击热区到 44x44 */
@@ -466,14 +710,26 @@ textarea.form-input {
   position: relative;
   width: 140px;
   height: 140px;
-  border: 1.5px dashed rgba(45, 42, 50, 0.25);
+  border: 1.5px dashed rgba(184, 149, 122, 0.30);
   border-radius: 14px;
-  background: #FAF7F9;
+  background: rgba(184, 149, 122, 0.05);
   cursor: pointer;
 }
 
 .add-image-box:active {
-  background: #F3ECEF;
+  background: rgba(184, 149, 122, 0.12);
+}
+
+.add-image-label {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  line-height: 1;
 }
 
 .add-image-hint {
@@ -510,7 +766,7 @@ textarea.form-input {
   height: 24px;
   border-radius: 50%;
   border: none;
-  background: rgba(45, 42, 50, 0.75);
+  background: rgba(61, 53, 48, 0.78);
   color: #fff;
   font-size: 14px;
   cursor: pointer;
@@ -530,6 +786,90 @@ textarea.form-input {
   right: -10px;
   bottom: -10px;
   border-radius: 50%;
+}
+
+/* ---------- 额外图（多张图片）---------- */
+
+.add-extra-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.add-extra-thumb {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(184, 149, 122, 0.12);
+}
+
+.add-extra-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.add-extra-actions {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 3px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.add-extra-thumb:active .add-extra-actions,
+.add-extra-actions:focus-within {
+  opacity: 1;
+}
+
+.add-extra-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-extra-btn.danger {
+  background: rgba(212, 112, 122, 0.85);
+}
+
+.add-extra-add {
+  margin-top: 10px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px dashed rgba(184, 149, 122, 0.35);
+  background: rgba(184, 149, 122, 0.04);
+  color: var(--primary);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0 12px;
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+
+.add-extra-add:active {
+  transform: scale(0.97);
+  background: rgba(184, 149, 122, 0.12);
+}
+
+.add-extra-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* 快捷标签 */
@@ -642,7 +982,7 @@ textarea.form-input {
   cursor: pointer;
   margin-top: 4px;
   padding: 0 12px;
-  box-shadow: 0 4px 14px rgba(255, 123, 169, 0.32);
+  box-shadow: 0 4px 14px rgba(184, 149, 122, 0.32);
   transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
 
@@ -656,7 +996,7 @@ textarea.form-input {
 .btn-primary:active:not(:disabled) {
   transform: scale(0.96);
   filter: brightness(1.03);
-  box-shadow: 0 2px 8px rgba(255, 123, 169, 0.28);
+  box-shadow: 0 2px 8px rgba(184, 149, 122, 0.28);
 }
 
 .btn-ghost {
@@ -755,7 +1095,7 @@ textarea.form-input {
   align-items: center;
   gap: 10px;
   background: var(--card);
-  border: 1px solid rgba(255, 123, 169, 0.08);
+  border: 1px solid rgba(184, 149, 122, 0.08);
   border-radius: 14px;
   padding: 10px 12px;
   box-shadow: var(--shadow-card);
@@ -868,9 +1208,9 @@ textarea.form-input {
 
 .net-section {
   padding: 10px;
-  border: 1px dashed rgba(167, 139, 250, 0.5);
+  border: 1px dashed rgba(232, 180, 184, 0.5);
   border-radius: 14px;
-  background: rgba(167, 139, 250, 0.06);
+  background: rgba(232, 180, 184, 0.06);
 }
 
 .net-search {
@@ -931,7 +1271,7 @@ textarea.form-input {
   border: none;
   border-radius: 10px;
   overflow: hidden;
-  background: #F2EEF1;
+  background: rgba(184, 149, 122, 0.08);
   cursor: pointer;
   padding-left: 0;
   padding-right: 0;
@@ -1101,7 +1441,7 @@ textarea.form-input {
   align-items: stretch;
   background: var(--card);
   border-radius: var(--radius);
-  border: 1px solid rgba(255, 123, 169, 0.06);
+  border: 1px solid rgba(184, 149, 122, 0.06);
   padding: 16px 8px;
   box-shadow: var(--shadow-card);
 }
@@ -1153,7 +1493,7 @@ textarea.form-input {
   gap: 10px;
   background: var(--card);
   border-radius: 14px;
-  border: 1px solid rgba(255, 123, 169, 0.06);
+  border: 1px solid rgba(184, 149, 122, 0.06);
   padding: 12px;
   box-shadow: var(--shadow-card);
 }
@@ -1221,7 +1561,7 @@ textarea.form-input {
 }
 
 .cond-tag.note {
-  background: rgba(167, 139, 250, 0.12);
+  background: rgba(232, 180, 184, 0.12);
   color: #7C63C4;
   max-width: 140px;
   overflow: hidden;
@@ -1300,7 +1640,7 @@ textarea.form-input {
 .chart-card {
   background: var(--card);
   border-radius: var(--radius);
-  border: 1px solid rgba(255, 123, 169, 0.06);
+  border: 1px solid rgba(184, 149, 122, 0.06);
   padding: 14px;
   box-shadow: var(--shadow-card);
 }
@@ -1510,7 +1850,7 @@ textarea.form-input {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  border: 1px solid rgba(255, 123, 169, 0.06);
+  border: 1px solid rgba(184, 149, 122, 0.06);
   border-radius: 14px;
   background: var(--card);
   box-shadow: var(--shadow-card);
@@ -1524,7 +1864,7 @@ textarea.form-input {
 
 .home-action:active {
   transform: scale(0.96);
-  box-shadow: 0 1px 6px rgba(255, 123, 169, 0.1);
+  box-shadow: 0 1px 6px rgba(184, 149, 122, 0.1);
 }
 
 .home-action-emoji {
@@ -1558,6 +1898,78 @@ textarea.form-input {
   margin-top: 18px;
 }
 
+/* ---------- 库存概览 ---------- */
+
+.inventory-overview {
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid rgba(184, 149, 122, 0.06);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inv-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.inv-label {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--muted);
+  width: 62px;
+  padding-top: 2px;
+}
+
+.inv-channels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+
+.inv-chip {
+  display: inline-block;
+  background: rgba(184, 149, 122, 0.10);
+  color: var(--primary);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  line-height: 1.4;
+}
+
+.inv-chip.rarity {
+  background: var(--star);
+  color: #8C7030;
+}
+
+.inv-chip.rarity.ultra {
+  background: linear-gradient(135deg, #D5B866, #E8B4B8);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(213, 184, 102, 0.3);
+}
+
+.inv-sub {
+  font-size: 10px;
+  opacity: 0.85;
+  margin-left: 2px;
+}
+
+.inv-empty {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.inv-value {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+}
+
 .section-head {
   display: flex;
   align-items: baseline;
@@ -1580,7 +1992,7 @@ textarea.form-input {
 .presale-card {
   background: var(--card);
   border-radius: var(--radius);
-  border: 1px solid rgba(255, 123, 169, 0.06);
+  border: 1px solid rgba(184, 149, 122, 0.06);
   padding: 6px 14px;
   box-shadow: var(--shadow-card);
 }
@@ -1606,7 +2018,7 @@ textarea.form-input {
   font-weight: 600;
   padding: 5px 8px;
   border-radius: 9px;
-  background: rgba(245, 185, 66, 0.15);
+  background: rgba(247, 214, 132, 0.15);
   color: #C98F1B;
   white-space: nowrap;
 }
@@ -1636,4 +2048,45 @@ textarea.form-input {
 .home-record-list .record-item {
   box-shadow: none;
   border: 1px solid rgba(45, 42, 50, 0.05);
+}
+
+/* ---------- 联想输入框 ---------- */
+
+.suggest-wrap {
+  position: relative;
+}
+
+.suggest-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  background: var(--card);
+  border-radius: 14px;
+  border: 1px solid rgba(184, 149, 122, 0.15);
+  box-shadow: var(--shadow-card-hover);
+  z-index: 20;
+  padding: 4px;
+}
+
+.suggest-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.suggest-item:active {
+  background: rgba(232, 180, 184, 0.18);
 }

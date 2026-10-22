@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getAllProducts, getAllRecords, getNickname } from '../store/db.js'
 import {
   getStock,
+  getStockByChannel,
   getTotalSpend,
   getTotalIncome,
   getUpcomingPresales,
@@ -85,6 +86,38 @@ export default function Home({ onGoTab }) {
     return map
   }, [products])
 
+  // 库存概览：按渠道汇总 + 稀有度统计
+  const channelBreakdown = useMemo(() => {
+    const agg = {}
+    for (const p of products) {
+      const by = getStockByChannel(p.id, records)
+      for (const [ch, n] of Object.entries(by)) {
+        agg[ch] = (agg[ch] || 0) + n
+      }
+    }
+    return agg
+  }, [products, records])
+
+  const rarityBreakdown = useMemo(() => {
+    let secretStock = 0
+    let ultraStock = 0
+    let secretProducts = 0
+    let ultraProducts = 0
+    for (const p of products) {
+      const s = getStock(p.id, records)
+      if (p.rarity === 'ultra') {
+        ultraStock += s
+        if (s > 0) ultraProducts++
+      } else if (p.rarity === 'secret' || p.isSecret) {
+        secretStock += s
+        if (s > 0) secretProducts++
+      }
+    }
+    return { secretStock, ultraStock, secretProducts, ultraProducts }
+  }, [products, records])
+
+  const avgCost = totalStock > 0 ? spend / totalStock : 0
+
   const isEmpty = products.length === 0 && records.length === 0
 
   return (
@@ -150,6 +183,53 @@ export default function Home({ onGoTab }) {
           <span className="stat-value income">{formatMoney(income)}</span>
         </div>
       </div>
+
+      {products.length > 0 && (
+        <section className="home-section">
+          <h2 className="section-title">库存概览</h2>
+          <div className="inventory-overview">
+            <div className="inv-row">
+              <span className="inv-label">渠道分布</span>
+              <div className="inv-channels">
+                {Object.keys(channelBreakdown).length > 0 ? (
+                  Object.entries(channelBreakdown).map(([ch, n]) => (
+                    <span key={ch} className="inv-chip">
+                      {ch} {n}
+                    </span>
+                  ))
+                ) : (
+                  <span className="inv-empty">—</span>
+                )}
+              </div>
+            </div>
+            {(rarityBreakdown.secretStock > 0 || rarityBreakdown.ultraStock > 0) && (
+              <div className="inv-row">
+                <span className="inv-label">稀有度</span>
+                <div className="inv-channels">
+                  {rarityBreakdown.secretStock > 0 && (
+                    <span className="inv-chip rarity">
+                      ★ 隐藏 {rarityBreakdown.secretStock}
+                      <span className="inv-sub">({rarityBreakdown.secretProducts} 款)</span>
+                    </span>
+                  )}
+                  {rarityBreakdown.ultraStock > 0 && (
+                    <span className="inv-chip rarity ultra">
+                      ★ 大隐藏 {rarityBreakdown.ultraStock}
+                      <span className="inv-sub">({rarityBreakdown.ultraProducts} 款)</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+            {totalStock > 0 && (
+              <div className="inv-row">
+                <span className="inv-label">平均成本</span>
+                <span className="inv-value">{formatMoney(avgCost)}/件</span>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {isEmpty && (
         <div className="home-empty home-empty-inline">

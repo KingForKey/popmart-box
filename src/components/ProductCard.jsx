@@ -1,13 +1,23 @@
 import { useRef } from 'react'
 import { formatPresale } from '../store/models.js'
+import { pinchingRef } from '../utils/pinchState.js'
 
 // 款式卡片：纯展示组件，数据全部来自 props。
-// channelStock: { 渠道: 数量 }；transferPresale: 盒机转赠按预售时间 { 'YYYY-MM-DD': n }；
-// condStock: 现货可发按成色 { 成色: n }。
-// 展示层级：渠道是一级，盒机转赠下挂预售时间、现货可发下挂成色。
-// 长按 500ms 触发 onLongPress，期间移动超过 10px 视为滚动、取消长按。
+// density: comfortable 完整信息；cozy 隐藏渠道二级明细；snug 仅图+名+库存。
+// 长按 500ms 触发 onLongPress，pinch 缩放期间自动屏蔽长按避免冲突。
 
-export default function ProductCard({ product, stock, channelStock, transferPresale, condStock, image, onClick, onMinus, onLongPress }) {
+export default function ProductCard({
+  product,
+  stock,
+  channelStock,
+  transferPresale,
+  condStock,
+  image,
+  density = 'comfortable',
+  onClick,
+  onMinus,
+  onLongPress
+}) {
   const timerRef = useRef(null)
   const firedRef = useRef(false)
   const startPosRef = useRef({ x: 0, y: 0 })
@@ -20,6 +30,7 @@ export default function ProductCard({ product, stock, channelStock, transferPres
   }
 
   function handlePointerDown(e) {
+    if (pinchingRef.current) return
     firedRef.current = false
     startPosRef.current = { x: e.clientX, y: e.clientY }
     clearTimer()
@@ -52,14 +63,15 @@ export default function ProductCard({ product, stock, channelStock, transferPres
   const firstChar = (product.name || '').trim().charAt(0) || '娃'
   const transferCount = channelStock ? channelStock['盒机转赠'] || 0 : 0
   const stockCount = channelStock ? channelStock['现货可发'] || 0 : 0
-  const presaleEntries = transferPresale
-    ? Object.keys(transferPresale).sort()
-    : []
+  const presaleEntries = transferPresale ? Object.keys(transferPresale).sort() : []
   const condEntries = condStock ? Object.keys(condStock) : []
+  const isSnug = density === 'snug'
+  const isCozy = density === 'cozy'
+  const compact = isSnug || isCozy
 
   return (
     <div
-      className={'product-card' + (stock <= 0 ? ' empty' : '')}
+      className={'product-card density-' + density + (stock <= 0 ? ' empty' : '')}
       onClick={handleClick}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -74,13 +86,20 @@ export default function ProductCard({ product, stock, channelStock, transferPres
         ) : (
           <span className="product-card-char">{firstChar}</span>
         )}
-        {product.isSecret && <span className="product-card-secret">隐藏</span>}
+        {product.rarity === 'ultra' ? (
+          <span className="product-card-secret ultra">大隐藏</span>
+        ) : product.rarity === 'secret' || product.isSecret ? (
+          <span className="product-card-secret">隐藏</span>
+        ) : null}
+        {stock > 1 && !isSnug && (
+          <span className="product-card-badge">×{stock}</span>
+        )}
       </div>
 
       <div className="product-card-name">{product.name}</div>
-      <div className="product-card-series">{product.series}</div>
+      {!isSnug && <div className="product-card-series">{product.series}</div>}
 
-      {(transferCount > 0 || stockCount > 0) && (
+      {!compact && (transferCount > 0 || stockCount > 0) && (
         <div className="product-card-cond">
           {transferCount > 0 && (
             <div className="cond-row">
@@ -111,21 +130,23 @@ export default function ProductCard({ product, stock, channelStock, transferPres
         </div>
       )}
 
-      <div className="product-card-bottom">
-        <span className="product-card-stock">{stock}</span>
-        <button
-          type="button"
-          className="product-card-minus"
-          aria-label="卖出"
-          onClick={(e) => {
-            e.stopPropagation()
-            if (onMinus) onMinus()
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          −
-        </button>
-      </div>
+      {!isSnug && (
+        <div className="product-card-bottom">
+          <span className="product-card-stock">{stock}</span>
+          <button
+            type="button"
+            className="product-card-minus"
+            aria-label="卖出"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (onMinus) onMinus()
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            −
+          </button>
+        </div>
+      )}
     </div>
   )
 }

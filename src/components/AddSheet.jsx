@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Sheet from './Sheet.jsx'
 import SourceManager from './SourceManager.jsx'
+import SuggestInput from './SuggestInput.jsx'
+import { IP_DICT, SERIES_BY_IP, STYLES_BY_SERIES, ALL_SERIES, ALL_STYLES, matchIp } from '../data/popDict.js'
 import {
   getAllProducts,
   addProduct,
@@ -8,7 +10,10 @@ import {
   addRecord,
   saveImage,
   deleteImage,
-  getSources
+  getImage,
+  getSources,
+  newImageKey,
+  getProductGalleryKeys
 } from '../store/db.js'
 import { CHANNELS, CONDITIONS, formatDate } from '../store/models.js'
 import { pickImage } from '../platform/image.js'
@@ -16,10 +21,11 @@ import { searchProductImages, fetchProductImage } from '../platform/imageSearch.
 import { showToast } from '../platform/toast.js'
 
 const IP_TAGS = ['Molly', 'Dimoo', 'Skullpanda', 'Labubu']
-
-function genImageKey() {
-  return 'img_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
-}
+const RARITY_OPTIONS = [
+  { value: '', label: '普通' },
+  { value: 'secret', label: '隐藏款' },
+  { value: 'ultra', label: '大隐藏款' }
+]
 
 function toNumber(text) {
   const n = parseFloat(text)
@@ -28,15 +34,15 @@ function toNumber(text) {
 
 // 入库 / 编辑款式 弹窗。
 // initialData 有值时为编辑模式：只更新 product，不碰 record，隐藏成本价/日期。
-// 成功后调用 onSuccess()，由父页面负责关弹窗、toast、刷新列表。
-// 没有实拍图时可打开「自动搜产品网图」开关，联网搜索泡泡玛特产品图直接选用。
+// 支持多张图片（主图 + galleryKeys 额外图），rarity 字段替换旧 isSecret。
+// 向后兼容：老产品 isSecret=true 会映射为 rarity='secret' 写入。
 
 export default function AddSheet({ open, onClose, onSuccess, initialData, initialImage, seriesOptions }) {
   const isEdit = !!initialData
   const [name, setName] = useState('')
   const [series, setSeries] = useState('')
   const [ip, setIp] = useState('')
-  const [isSecret, setIsSecret] = useState(false)
+  const [rarity, setRarity] = useState('')
   const [price, setPrice] = useState('59')
   const [date, setDate] = useState('')
   const [channel, setChannel] = useState('现货可发')
@@ -44,9 +50,14 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
   const [presale, setPresale] = useState('')
   const [source, setSource] = useState('')
   const [note, setNote] = useState('')
+  // 主图 dataURL（编辑时可能和 initialImage 相同）
   const [image, setImage] = useState(null)
+  // 额外图 dataURL 数组（主图不算在里面）
+  const [extraImages, setExtraImages] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const nameRef = useRef(null)
+  // 历史款式列表：用于输入联想（打开时加载一次）
+  const [allProducts, setAllProducts] = useState([])
 
   const [sources, setSources] = useState([])
   const [managerOpen, setManagerOpen] = useState(false)
@@ -62,22 +73,81 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
     getSources().then(setSources)
   }
 
+  // ---------- 输入联想：历史数据优先，字典兜底 ----------
+
+  const nameSuggestions = useMemo(() => {
+    const out = []
+    // 已选系列时，该系列的字典款式名排最前
+    const seriesKey = series.trim()
+    if (seriesKey && STYLES_BY_SERIES[seriesKey]) {
+      for (const n of STYLES_BY_SERIES[seriesKey]) out.push(n)
+    }
+    for (const p of allProducts) {
+      const n = (p.name || '').trim()
+      if (n && out.indexOf(n) < 0) out.push(n)
+    }
+    for (const n of ALL_STYLES) {
+      if (out.indexOf(n) < 0) out.push(n)
+    }
+    return out
+  }, [allProducts, series])
+
+  const seriesSuggestions = useMemo(() => {
+    const out = []
+    // 已选 IP 时，该 IP 的字典系列排最前
+    const matched = matchIp(ip)
+    if (matched && SERIES_BY_IP[matched]) {
+      for (const s of SERIES_BY_IP[matched]) out.push(s)
+    }
+    for (const p of allProducts) {
+      const s = (p.series || '').trim()
+      if (s && out.indexOf(s) < 0) out.push(s)
+    }
+    for (const s of ALL_SERIES) {
+      if (out.indexOf(s) < 0) out.push(s)
+    }
+    return out
+  }, [allProducts, ip])
+
+  const ipSuggestions = useMemo(() => {
+    const out = []
+    for (const p of allProducts) {
+      const v = (p.ip || '').trim()
+      if (v && out.indexOf(v) < 0) out.push(v)
+    }
+    for (const v of IP_DICT) {
+      if (out.indexOf(v) < 0) out.push(v)
+    }
+    return out
+  }, [allProducts])
+
   // 每次打开时初始化表单
   useEffect(() => {
     if (!open) return
+    // 重置额外图列表
+    setExtraImages([])
     if (initialData) {
       setName(initialData.name || '')
       setSeries(initialData.series || '')
       setIp(initialData.ip || '')
-      setIsSecret(!!initialData.isSecret)
+      // 向后兼容：老产品只有 isSecret 没有 rarity
+      const r = initialData.rarity || (initialData.isSecret ? 'secret' : '')
+      setRarity(r)
       setSource(initialData.source || '')
       setNote(initialData.note || '')
       setImage(initialImage || null)
+      // 加载额外图：galleryKeys[1...] 对应 initialImage 已经是 galleryKeys[0]
+      const keys = getProductGalleryKeys(initialData)
+      if (keys.length > 1) {
+        Promise.all(keys.slice(1).map((k) => getImage(k))).then((urls) => {
+          setExtraImages(urls.filter(Boolean))
+        })
+      }
     } else {
       setName('')
       setSeries('')
       setIp('')
-      setIsSecret(false)
+      setRarity('')
       setPrice('59')
       setDate(formatDate(Date.now()))
       setChannel('现货可发')
@@ -96,6 +166,7 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
     setPickingUrl(null)
     setManagerOpen(false)
     reloadSources()
+    getAllProducts().then(setAllProducts)
   }, [open, initialData, initialImage])
 
   // 打开后自动聚焦款式名
@@ -115,6 +186,30 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
         if (msg.indexOf('取消') >= 0 || msg.indexOf('未选择') >= 0) return
         showToast(msg || '图片读取失败')
       })
+  }
+
+  function handlePickExtraImage() {
+    pickImage()
+      .then((dataUrl) => setExtraImages((arr) => [...arr, dataUrl]))
+      .catch((err) => {
+        const msg = err && err.message ? err.message : ''
+        if (msg.indexOf('取消') >= 0 || msg.indexOf('未选择') >= 0) return
+        showToast(msg || '图片读取失败')
+      })
+  }
+
+  function removeExtraImage(i) {
+    setExtraImages((arr) => arr.filter((_, idx) => idx !== i))
+  }
+
+  // 把额外图提升为主图：和 image 交换
+  function promoteExtraToMain(i) {
+    setExtraImages((arr) => {
+      const picked = arr[i]
+      const rest = arr.slice(0, i).concat(arr.slice(i + 1))
+      setImage(picked)
+      return rest
+    })
   }
 
   function toggleNetImage(on) {
@@ -162,22 +257,59 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
     if (!trimmedName || submitting) return
     setSubmitting(true)
     try {
+      // 统一把主图 + 额外图映射成最终 galleryKeys（key 数组）
+      // 不变的主图/额外图复用原 key，新图生成新 key
+      const initialGalleryKeys = isEdit ? getProductGalleryKeys(initialData) : []
+      const savedKeys = [] // 最终确定要写回的 key
+
+      // 主图：image（dataURL）可能和 initialImage 一样或不一样
+      if (image) {
+        const newMainKey = initialGalleryKeys[0] || newImageKey()
+        if (!initialGalleryKeys[0] || image !== initialImage) {
+          await saveImage(newMainKey, image)
+        }
+        savedKeys.push(newMainKey)
+      }
+
+      // 额外图：按"保持顺序 + 只保留还有 dataURL 的"来对齐
+      // 先尝试把 extraImages[i] 对应到 initialGalleryKeys[i+1]，相同就复用 key，不同就新 key
+      for (let i = 0; i < extraImages.length; i++) {
+        const dataUrl = extraImages[i]
+        if (!dataUrl) continue
+        const initialExtraKey = initialGalleryKeys[i + 1]
+        let key = initialExtraKey
+        if (!key) {
+          key = newImageKey()
+          await saveImage(key, dataUrl)
+        } else {
+          // 如果和原来一样（同一个 dataURL）就不再写 localStorage，否则重存
+          // 但我们不知道原来存的是什么 dataURL，简单起见也重存一次（幂等）
+          await saveImage(key, dataUrl)
+        }
+        savedKeys.push(key)
+      }
+
+      // 清理 initialGalleryKeys 里不再出现的 key（用户删掉了）
+      if (isEdit) {
+        for (const oldK of initialGalleryKeys) {
+          if (savedKeys.indexOf(oldK) < 0) {
+            await deleteImage(oldK)
+          }
+        }
+      }
+
       if (isEdit) {
         const patch = {
           name: trimmedName,
           series: series.trim(),
           ip: ip.trim(),
-          isSecret,
+          rarity,
+          // 向后兼容：仍写 isSecret，让老版本备份恢复时能识别
+          isSecret: rarity === 'secret' || rarity === 'ultra',
           source,
-          note: note.trim()
-        }
-        if (image && image !== initialImage) {
-          const key = initialData.imageKey || genImageKey()
-          await saveImage(key, image)
-          patch.imageKey = key
-        } else if (!image && initialData.imageKey) {
-          await deleteImage(initialData.imageKey)
-          patch.imageKey = null
+          note: note.trim(),
+          imageKey: savedKeys[0] || null,
+          galleryKeys: savedKeys
         }
         await updateProduct(initialData.id, patch)
       } else {
@@ -202,19 +334,16 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
             createdAt: Date.now()
           })
         } else {
-          let imageKey = null
-          if (image) {
-            imageKey = genImageKey()
-            await saveImage(imageKey, image)
-          }
           const created = await addProduct({
             name: trimmedName,
             series: trimmedSeries,
             ip: ip.trim(),
-            isSecret,
+            rarity,
+            isSecret: rarity === 'secret' || rarity === 'ultra',
             source,
             note: note.trim(),
-            imageKey,
+            imageKey: savedKeys[0] || null,
+            galleryKeys: savedKeys,
             createdAt: Date.now()
           })
           await addRecord({
@@ -245,16 +374,17 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
           <div className="add-image-box" onClick={handlePickImage}>
             {image ? (
               <div className="add-image-preview">
-                <img src={image} alt="款式图片预览" />
+                <img src={image} alt="主图预览" />
+                <span className="add-image-label">主图</span>
               </div>
             ) : (
-              <span className="add-image-hint">＋ 添加图片</span>
+              <span className="add-image-hint">＋ 添加主图</span>
             )}
             {image && (
               <button
                 type="button"
                 className="add-image-remove"
-                aria-label="删除图片"
+                aria-label="删除主图"
                 onClick={(e) => {
                   e.stopPropagation()
                   setImage(null)
@@ -264,6 +394,42 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
               </button>
             )}
           </div>
+          {extraImages.length > 0 && (
+            <div className="add-extra-row">
+              {extraImages.map((src, i) => (
+                <div key={i} className="add-extra-thumb">
+                  <img src={src} alt={'额外图 ' + (i + 1)} />
+                  <div className="add-extra-actions">
+                    <button
+                      type="button"
+                      className="add-extra-btn"
+                      onClick={() => promoteExtraToMain(i)}
+                      title="设为主图"
+                    >
+                      主
+                    </button>
+                    <button
+                      type="button"
+                      className="add-extra-btn danger"
+                      onClick={() => removeExtraImage(i)}
+                      title="删除"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            className="add-extra-add"
+            onClick={handlePickExtraImage}
+            disabled={!image}
+            title={image ? '添加额外图' : '请先添加主图'}
+          >
+            ＋ 额外图 ({extraImages.length})
+          </button>
         </div>
 
         {!image && (
@@ -325,26 +491,24 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
           <label className="form-label" htmlFor="field-name">
             款式名<span className="req">*</span>
           </label>
-          <input
+          <SuggestInput
             id="field-name"
-            ref={nameRef}
-            type="text"
-            className="form-input"
+            inputRef={nameRef}
             placeholder="必填，例如：Molly 魔法师"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={setName}
+            suggestions={nameSuggestions}
           />
         </div>
 
         <div className="form-item">
           <label className="form-label" htmlFor="field-series">系列名</label>
-          <input
+          <SuggestInput
             id="field-series"
-            type="text"
-            className="form-input"
-            placeholder="例如：魔法世界系列"
+            placeholder="例如：坐坐派对系列"
             value={series}
-            onChange={(e) => setSeries(e.target.value)}
+            onChange={setSeries}
+            suggestions={seriesSuggestions}
           />
           {seriesOptions.length > 0 && (
             <div className="chip-row">
@@ -359,13 +523,12 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
 
         <div className="form-item">
           <label className="form-label" htmlFor="field-ip">IP</label>
-          <input
+          <SuggestInput
             id="field-ip"
-            type="text"
-            className="form-input"
-            placeholder="例如：Molly"
+            placeholder="例如：Labubu"
             value={ip}
-            onChange={(e) => setIp(e.target.value)}
+            onChange={setIp}
+            suggestions={ipSuggestions}
           />
           <div className="chip-row">
             {IP_TAGS.map((t) => (
@@ -381,18 +544,18 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
           </div>
         </div>
 
-        <div className="form-item form-row">
-          <label className="form-label">是否隐藏款</label>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isSecret}
-            aria-label="是否隐藏款"
-            className={'switch' + (isSecret ? ' on' : '')}
-            onClick={() => setIsSecret(!isSecret)}
+        <div className="form-item">
+          <label className="form-label" htmlFor="field-rarity">稀有度</label>
+          <select
+            id="field-rarity"
+            className="form-input form-select"
+            value={rarity}
+            onChange={(e) => setRarity(e.target.value)}
           >
-            <span className="switch-thumb" />
-          </button>
+            {RARITY_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
         </div>
 
         {!isEdit && (

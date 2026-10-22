@@ -1,19 +1,25 @@
-/* 主题变量 + 全局基础样式 */
+/* 主题变量 + 全局基础样式 — 泡泡玛特星星人风格
+   奶白底色 + 奶茶棕主色 + 豆沙粉辅色 + 金点点缀，
+   圆润大圆角 + 软阴影，整体软萌可爱 */
 
 :root {
-  --bg: #FDF8F6;
+  --bg: #FBF7F2;
   --card: #FFFFFF;
-  --primary: #FF7BA9;
-  --accent: #A78BFA;
-  --text: #2D2A32;
-  --muted: #9B96A3;
-  --gold: #F5B942;
-  --success: #34C77B;
-  --danger: #FF5A5F;
-  --radius: 18px;
-  /* 统一卡片阴影与主按钮渐变（视觉打磨） */
-  --shadow-card: 0 2px 12px rgba(255, 123, 169, 0.08);
-  --grad-primary: linear-gradient(135deg, #FF7BA9, #A78BFA);
+  --primary: #B8957A;
+  --accent: #E8B4B8;
+  --text: #3D3530;
+  --muted: #9E9088;
+  --gold: #D5B866;
+  --success: #6FAE7E;
+  --danger: #D4707A;
+  --star: #F7D684;
+  --radius: 24px;
+  --radius-sm: 16px;
+  /* 软乎乎的两层阴影，不硬 */
+  --shadow-card: 0 4px 16px rgba(184, 149, 122, 0.10), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 6px 24px rgba(184, 149, 122, 0.16), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --grad-primary: linear-gradient(135deg, #B8957A, #E8B4B8);
+  --shadow-fab: 0 6px 20px rgba(184, 149, 122, 0.35);
 }
 
 * {
