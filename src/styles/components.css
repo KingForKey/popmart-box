@@ -1,4 +1,4 @@
-﻿﻿/* 共享组件样式：Sheet 弹窗 / 操作菜单 / 确认框 / 详情 / 商品卡片 */
+﻿/* 共享组件样式：Sheet 弹窗 / 操作菜单 / 确认框 / 详情 / 商品卡片 */
 
 /* ---------- Sheet 通用底部弹窗 ---------- */
 
@@ -2089,4 +2089,145 @@ textarea.form-input {
 
 .suggest-item:active {
   background: rgba(232, 180, 184, 0.18);
+}
+
+/* ---------- 扫码 ---------- */
+
+.scan-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.scan-entry-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  border: none;
+  border-radius: 18px;
+  background: var(--grad-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 6px 16px rgba(184, 149, 122, 0.28);
+  cursor: pointer;
+}
+
+.scan-entry-btn:disabled {
+  opacity: 0.6;
+}
+
+.scan-entry-btn.photo {
+  background: rgba(232, 180, 184, 0.18);
+  color: var(--primary);
+  border: 1px solid rgba(184, 149, 122, 0.3);
+  box-shadow: none;
+}
+
+.scan-entry-icon {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.scan-chip-row {
+  margin: -4px 0 12px;
+}
+
+.scan-chip {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--muted);
+  background: rgba(184, 149, 122, 0.1);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.scan-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.scan-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #1d1a1f;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.scan-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.scan-frame {
+  position: absolute;
+  inset: 16%;
+  border-radius: 16px;
+  border: 2px solid rgba(247, 214, 132, 0.9);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+.scan-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  max-width: 86%;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+.scan-hint.scan-error {
+  color: #ffd9d9;
+}
+
+.scan-tip {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+  text-align: center;
+}
+
+.scan-manual-btn {
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  font-size: 14px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.scan-submit-btn {
+  height: 46px;
+  border: none;
+  border-radius: 18px;
+  background: var(--grad-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.scan-submit-btn:disabled {
+  opacity: 0.5;
 }

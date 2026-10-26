@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Sheet from './Sheet.jsx'
 import SourceManager from './SourceManager.jsx'
 import SuggestInput from './SuggestInput.jsx'
+import ScanSheet from './ScanSheet.jsx'
 import { IP_DICT, SERIES_BY_IP, STYLES_BY_SERIES, ALL_SERIES, ALL_STYLES, matchIp } from '../data/popDict.js'
 import {
   getAllProducts,
@@ -16,6 +17,9 @@ import {
   getProductGalleryKeys
 } from '../store/db.js'
 import { CHANNELS, CONDITIONS, formatDate } from '../store/models.js'
+import { lookupCode, rememberCode } from '../store/codeBook.js'
+import { resolveWebTitle } from '../platform/scan.js'
+import { hashImage, findBestMatch } from '../platform/photoMatch.js'
 import { pickImage } from '../platform/image.js'
 import { searchProductImages, fetchProductImage } from '../platform/imageSearch.js'
 import { showToast } from '../platform/toast.js'
@@ -68,6 +72,13 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
   const [netError, setNetError] = useState('')
   const [netResults, setNetResults] = useState([])
   const [pickingUrl, setPickingUrl] = useState(null)
+
+  // 扫码：scanInfo 保存本次扫到的码，随款式一起存档，用于下次自动识别
+  const [scanOpen, setScanOpen] = useState(false)
+  const [scanInfo, setScanInfo] = useState(null)
+  const [scanning, setScanning] = useState(false)
+  // 拍照识别中状态
+  const [photoScanning, setPhotoScanning] = useState(false)
 
   function reloadSources() {
     getSources().then(setSources)
@@ -165,6 +176,15 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
     setNetResults([])
     setPickingUrl(null)
     setManagerOpen(false)
+    setScanOpen(false)
+    setScanning(false)
+    setPhotoScanning(false)
+    // 编辑时沿用款式上已存的码；新增时清空
+    setScanInfo(
+      initialData && initialData.scanCode
+        ? { code: initialData.scanCode, format: initialData.scanFormat || '' }
+        : null
+    )
     reloadSources()
     getAllProducts().then(setAllProducts)
   }, [open, initialData, initialImage])
@@ -252,6 +272,95 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
     }
   }
 
+  // 扫码结果：先查本地码库，命中就直接填表；未命中则存档待下次学习。
+  async function handleScanResult(res) {
+    setScanOpen(false)
+    const code = res.code
+    const format = res.format || ''
+    setScanInfo({ code, format })
+    setScanning(true)
+    try {
+      const hit = lookupCode(code)
+      if (hit) {
+        if (hit.series) setSeries(hit.series)
+        if (hit.ip) setIp(hit.ip)
+        if (hit.name) setName(hit.name)
+        if (hit.rarity) setRarity(hit.rarity)
+        showToast('已识别：' + (hit.name || hit.series || '该码已收录'))
+        return
+      }
+
+      // 二维码内容若是网址，尝试联网读取产品标题（失败不影响使用）
+      const title = await resolveWebTitle(code)
+      if (title) {
+        if (!name.trim()) setName(title)
+        if (!netKeyword.trim()) setNetKeyword(title)
+        showToast('已按网页信息填入，可修改')
+      } else {
+        showToast('新码已记录，填好款式名后下次自动识别')
+      }
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  // 拍照识别：拍一张照片当主图，同时算出照片指纹，
+  // 和已入库款式逐一比对。命中就自动填表；没命中这张照片也留下来当主图。
+  // 老款式没有指纹的，会在第一次识别时现场补齐并保存，之后就越用越快。
+  async function handlePhotoRecognize() {
+    if (photoScanning) return
+    let dataUrl
+    try {
+      dataUrl = await pickImage()
+    } catch (err) {
+      const msg = err && err.message ? err.message : ''
+      if (msg.indexOf('取消') < 0 && msg.indexOf('未选择') < 0) {
+        showToast(msg || '图片读取失败')
+      }
+      return
+    }
+    setImage(dataUrl)
+    setPhotoScanning(true)
+    try {
+      const target = await hashImage(dataUrl)
+      const products = await getAllProducts()
+      const candidates = []
+      for (const p of products) {
+        let h = p.photoHash || ''
+        if (!h && p.imageKey) {
+          try {
+            const url = await getImage(p.imageKey)
+            if (url) {
+              h = await hashImage(url)
+              // 顺手把指纹存回去，下次不用再算
+              await updateProduct(p.id, { photoHash: h })
+            }
+          } catch (e) {
+            // 单条失败跳过，不影响其他款式
+          }
+        }
+        if (h) candidates.push({ hash: h, product: p })
+      }
+      const hit = findBestMatch(target, candidates)
+      if (hit && hit.product && (!isEdit || hit.product.id !== initialData.id)) {
+        const p = hit.product
+        if (p.name) setName(p.name)
+        if (p.series) setSeries(p.series)
+        if (p.ip) setIp(p.ip)
+        if (p.rarity) setRarity(p.rarity)
+        else if (p.isSecret) setRarity('secret')
+        if (p.source) setSource(p.source)
+        showToast('认出是「' + p.name + '」，不对可以手动改')
+      } else {
+        showToast('没认出来，填好款式名保存后就记住了')
+      }
+    } catch (e) {
+      showToast('识别失败，照片已保留，手动填写即可')
+    } finally {
+      setPhotoScanning(false)
+    }
+  }
+
   async function handleSubmit() {
     const trimmedName = name.trim()
     if (!trimmedName || submitting) return
@@ -298,6 +407,18 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
         }
       }
 
+      // 照片指纹：主图变了才重新算；编辑时没动主图就沿用旧的；没有主图就清空
+      let photoHashVal = isEdit ? initialData.photoHash || '' : ''
+      if (!image) {
+        photoHashVal = ''
+      } else if (!isEdit || image !== initialImage) {
+        try {
+          photoHashVal = await hashImage(image)
+        } catch (e) {
+          // 算不出来不阻塞保存
+        }
+      }
+
       if (isEdit) {
         const patch = {
           name: trimmedName,
@@ -309,7 +430,11 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
           source,
           note: note.trim(),
           imageKey: savedKeys[0] || null,
-          galleryKeys: savedKeys
+          galleryKeys: savedKeys,
+          // 扫到的码随款式存档（可选字段，老版本读取时忽略）
+          scanCode: scanInfo ? scanInfo.code : '',
+          scanFormat: scanInfo ? scanInfo.format : '',
+          photoHash: photoHashVal
         }
         await updateProduct(initialData.id, patch)
       } else {
@@ -321,7 +446,15 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
             (p.series || '').trim() === trimmedSeries
         )
         if (existing) {
-          // 同名同系列已存在：复用 product，只新增一条入库记录
+          // 同名同系列已存在：复用 product，只新增一条入库记录。
+          // 顺手补齐老款式缺失的码与照片指纹，让它也进入识别记忆库
+          if ((scanInfo && scanInfo.code && !existing.scanCode) || (photoHashVal && !existing.photoHash)) {
+            await updateProduct(existing.id, {
+              scanCode: existing.scanCode || (scanInfo ? scanInfo.code : ''),
+              scanFormat: existing.scanFormat || (scanInfo ? scanInfo.format : ''),
+              photoHash: existing.photoHash || photoHashVal
+            })
+          }
           await addRecord({
             productId: existing.id,
             type: 'in',
@@ -344,6 +477,9 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
             note: note.trim(),
             imageKey: savedKeys[0] || null,
             galleryKeys: savedKeys,
+            scanCode: scanInfo ? scanInfo.code : '',
+            scanFormat: scanInfo ? scanInfo.format : '',
+            photoHash: photoHashVal,
             createdAt: Date.now()
           })
           await addRecord({
@@ -359,6 +495,17 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
           })
         }
       }
+      // 学习码库：下次扫到同一个码就能直接填表
+      if (scanInfo && scanInfo.code) {
+        rememberCode({
+          code: scanInfo.code,
+          format: scanInfo.format,
+          name: trimmedName,
+          series: series.trim(),
+          ip: ip.trim(),
+          rarity
+        })
+      }
       onSuccess()
     } catch (e) {
       showToast((e && e.message) || '保存失败')
@@ -370,6 +517,36 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
   return (
     <Sheet open={open} onClose={onClose} title={isEdit ? '编辑款式' : '入库'}>
       <div className="add-form">
+        <div className="scan-entry">
+          <button
+            type="button"
+            className="scan-entry-btn"
+            onClick={() => setScanOpen(true)}
+            disabled={scanning || photoScanning}
+          >
+            <span className="scan-entry-icon" aria-hidden="true">▣</span>
+            {scanning ? '识别中…' : '扫码识别'}
+          </button>
+          <button
+            type="button"
+            className="scan-entry-btn photo"
+            onClick={handlePhotoRecognize}
+            disabled={photoScanning || scanning}
+          >
+            <span className="scan-entry-icon" aria-hidden="true">◉</span>
+            {photoScanning ? '识别中…' : '拍照识别'}
+          </button>
+        </div>
+        {scanInfo && (
+          <div className="scan-chip-row">
+            <span className="scan-chip" title={scanInfo.code}>
+              码 {scanInfo.code.length > 16
+                ? scanInfo.code.slice(0, 8) + '…' + scanInfo.code.slice(-4)
+                : scanInfo.code}
+            </span>
+          </div>
+        )}
+
         <div className="form-item">
           <div className="add-image-box" onClick={handlePickImage}>
             {image ? (
@@ -681,6 +858,12 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
         open={managerOpen}
         onClose={() => setManagerOpen(false)}
         onChanged={reloadSources}
+      />
+
+      <ScanSheet
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onResult={handleScanResult}
       />
     </Sheet>
   )
