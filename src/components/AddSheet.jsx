@@ -20,6 +20,7 @@ import { CHANNELS, CONDITIONS, formatDate } from '../store/models.js'
 import { lookupCode, rememberCode } from '../store/codeBook.js'
 import { resolveWebTitle } from '../platform/scan.js'
 import { hashImage, findBestMatch } from '../platform/photoMatch.js'
+import { loadAiConfig, recognizeFigure } from '../platform/aiVision.js'
 import { pickImage } from '../platform/image.js'
 import { searchProductImages, fetchProductImage } from '../platform/imageSearch.js'
 import { showToast } from '../platform/toast.js'
@@ -351,6 +352,21 @@ export default function AddSheet({ open, onClose, onSuccess, initialData, initia
         else if (p.isSecret) setRarity('secret')
         if (p.source) setSource(p.source)
         showToast('认出是「' + p.name + '」，不对可以手动改')
+      } else if (loadAiConfig().enabled) {
+        // 本地指纹没认出来，且开了 AI：把照片发给 AI 识别
+        try {
+          const ai = await recognizeFigure(dataUrl)
+          if (ai && (ai.name || ai.series || ai.ip)) {
+            if (ai.name) setName(ai.name)
+            if (ai.series) setSeries(ai.series)
+            if (ai.ip) setIp(ai.ip)
+            showToast('AI 认出是「' + (ai.name || ai.series || ai.ip) + '」，请确认后保存', { duration: 3500 })
+          } else {
+            showToast('AI 也没认出来，请手动填写')
+          }
+        } catch (err) {
+          showToast(err && err.message ? err.message : 'AI 识别失败')
+        }
       } else {
         showToast('没认出来，填好款式名保存后就记住了')
       }

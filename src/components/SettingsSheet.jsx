@@ -19,6 +19,7 @@ import {
   promptInstall
 } from '../platform/install.js'
 import { showToast } from '../platform/toast.js'
+import { loadAiConfig, saveAiConfig, testAiKey } from '../platform/aiVision.js'
 import { formatDate, formatDateTime, formatPresale } from '../store/models.js'
 
 // 设置弹窗：使用说明 + 自动备份恢复 + 数据备份（导出 / 导入覆盖）。
@@ -32,6 +33,9 @@ export default function SettingsSheet({ open, onClose, onImported }) {
   const [installable, setInstallable] = useState(canPromptInstall())
   const [standalone] = useState(isStandalone())
   const [ios] = useState(isIOS())
+  const [aiOpen, setAiOpen] = useState(false)
+  const [aiCfg, setAiCfg] = useState(loadAiConfig())
+  const [aiTesting, setAiTesting] = useState(false)
 
   useEffect(() => onInstallStateChange(() => setInstallable(canPromptInstall())), [])
 
@@ -40,8 +44,29 @@ export default function SettingsSheet({ open, onClose, onImported }) {
     setBusy(false)
     setPending(null)
     setConfirmAuto(false)
+    setAiOpen(false)
+    setAiCfg(loadAiConfig())
+    setAiTesting(false)
     getAutoBackupInfo().then(setAutoInfo)
   }, [open])
+
+  function handleSaveAi() {
+    saveAiConfig(aiCfg)
+    showToast(aiCfg.enabled && aiCfg.apiKey ? 'AI 识别已开启' : '已保存（AI 识别未开启）')
+  }
+
+  async function handleTestAi() {
+    if (aiTesting) return
+    setAiTesting(true)
+    try {
+      await testAiKey(aiCfg)
+      showToast('连接成功，密钥可用')
+    } catch (e) {
+      showToast(e && e.message ? e.message : '连接失败')
+    } finally {
+      setAiTesting(false)
+    }
+  }
 
   async function handleExportXlsx() {
     if (busy) return
@@ -287,6 +312,82 @@ export default function SettingsSheet({ open, onClose, onImported }) {
                 恢复
               </button>
             </div>
+
+            <div className="auto-backup-row">
+              <div className="auto-backup-info">
+                <span className="auto-backup-title">AI 拍照识别</span>
+                <span className="auto-backup-meta">
+                  {aiCfg.enabled && aiCfg.apiKey
+                    ? '已开启 · ' + aiCfg.model
+                    : '未开启 · 拍娃自动认出款式名/系列/IP'}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn-mini"
+                onClick={() => setAiOpen(!aiOpen)}
+              >
+                {aiOpen ? '收起' : '配置'}
+              </button>
+            </div>
+
+            {aiOpen && (
+              <div className="ai-config-body">
+                <div className="form-item">
+                  <label className="form-label" htmlFor="ai-key">API Key</label>
+                  <input
+                    id="ai-key"
+                    type="password"
+                    value={aiCfg.apiKey}
+                    placeholder="智谱 bigmodel.cn 申请，形如 xxxxx.xxxxx"
+                    onChange={(e) => setAiCfg({ ...aiCfg, apiKey: e.target.value.trim() })}
+                  />
+                </div>
+                <details className="ai-advanced">
+                  <summary>高级设置（一般不用动）</summary>
+                  <div className="form-item">
+                    <label className="form-label" htmlFor="ai-url">接口地址</label>
+                    <input
+                      id="ai-url"
+                      value={aiCfg.baseUrl}
+                      onChange={(e) => setAiCfg({ ...aiCfg, baseUrl: e.target.value.trim() })}
+                    />
+                  </div>
+                  <div className="form-item">
+                    <label className="form-label" htmlFor="ai-model">模型</label>
+                    <input
+                      id="ai-model"
+                      value={aiCfg.model}
+                      onChange={(e) => setAiCfg({ ...aiCfg, model: e.target.value.trim() })}
+                    />
+                  </div>
+                </details>
+                <div className="ai-config-actions">
+                  <button
+                    type="button"
+                    className="btn-mini"
+                    disabled={!aiCfg.apiKey || aiTesting}
+                    onClick={handleTestAi}
+                  >
+                    {aiTesting ? '测试中…' : '测试连接'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-mini"
+                    onClick={() => setAiCfg({ ...aiCfg, enabled: !aiCfg.enabled })}
+                  >
+                    {aiCfg.enabled ? '点击关闭' : '点击开启'}
+                  </button>
+                  <button type="button" className="btn-mini primary" onClick={handleSaveAi}>
+                    保存
+                  </button>
+                </div>
+                <p className="settings-hint">
+                  密钥只保存在本机浏览器，不会上传；识别时照片会发给 AI 服务商，介意隐私可不开启。
+                  免费模型 glm-4v-flash 不收钱，一天识别一两百次够用。
+                </p>
+              </div>
+            )}
 
             <p className="settings-hint">
               导出文件为 JSON 格式，包含全部款式、记录、标签、昵称与图片；
