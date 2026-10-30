@@ -339,7 +339,7 @@ export default function SettingsSheet({ open, onClose, onImported }) {
                     id="ai-key"
                     type="password"
                     value={aiCfg.apiKey}
-                    placeholder="智谱 bigmodel.cn 申请，形如 xxxxx.xxxxx"
+                    placeholder="魔搭 modelscope.cn 申请，形如 ms-xxxxxx"
                     onChange={(e) => setAiCfg({ ...aiCfg, apiKey: e.target.value.trim() })}
                   />
                 </div>
@@ -384,7 +384,7 @@ export default function SettingsSheet({ open, onClose, onImported }) {
                 </div>
                 <p className="settings-hint">
                   密钥只保存在本机浏览器，不会上传；识别时照片会发给 AI 服务商，介意隐私可不开启。
-                  免费模型 glm-4v-flash 不收钱，一天识别一两百次够用。
+                  魔搭每天免费 2000 次，一天识别一两百次够用。
                 </p>
               </div>
             )}

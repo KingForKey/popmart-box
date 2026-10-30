@@ -5,9 +5,11 @@
 
 const CONFIG_KEY = 'pm_ai_vision_config'
 
+// 默认走阿里 ModelScope（魔搭）：国内可达、支持浏览器跨域直连、每天免费额度。
+// 智谱接口不允许浏览器跨域调用，请勿改回。
 const DEFAULTS = {
-  baseUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-  model: 'glm-4v-flash'
+  baseUrl: 'https://api-inference.modelscope.cn/v1/chat/completions',
+  model: 'Qwen/Qwen2.5-VL-72B-Instruct'
 }
 
 export function loadAiConfig() {
@@ -80,19 +82,44 @@ function parseAnswer(text) {
   }
 }
 
+// 直接调用。ModelScope 支持浏览器跨域；若用户自填其他不支持跨域的接口，
+// fetch 会抛 TypeError，统一转成可读提示。
+async function fetchWithFallback(targetUrl, options) {
+  try {
+    return await fetch(targetUrl, options)
+  } catch (e) {
+    throw new Error('无法连接 AI 服务（该接口不支持网页直连或网络受限）')
+  }
+}
+
+function buildBody(cfg, content, maxTokens) {
+  const body = {
+    model: cfg.model,
+    messages: [{ role: 'user', content }],
+    temperature: 0.1,
+    max_tokens: maxTokens
+  }
+  // GLM-4.5/4.6 系列默认会"思考"，烧 token 且可能没时间输出结果，关掉
+  if (/glm-4\.[56]/.test(cfg.model)) {
+    body.thinking = { type: 'disabled' }
+  }
+  return JSON.stringify(body)
+}
+
 // 测试密钥是否可用：发一条最便宜的纯文本请求
 export async function testAiKey(cfg) {
-  const resp = await fetch(cfg.baseUrl || DEFAULTS.baseUrl, {
+  const merged = {
+    baseUrl: cfg.baseUrl || DEFAULTS.baseUrl,
+    model: cfg.model || DEFAULTS.model,
+    apiKey: cfg.apiKey
+  }
+  const resp = await fetchWithFallback(merged.baseUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + cfg.apiKey
+      'Authorization': 'Bearer ' + merged.apiKey
     },
-    body: JSON.stringify({
-      model: cfg.model || DEFAULTS.model,
-      messages: [{ role: 'user', content: 'ok' }],
-      max_tokens: 5
-    })
+    body: buildBody(merged, 'ok', 5)
   })
   if (!resp.ok) {
     if (resp.status === 401 || resp.status === 403) throw new Error('密钥无效（401），请检查是否复制完整')
@@ -106,26 +133,16 @@ export async function recognizeFigure(dataUrl) {
   const cfg = loadAiConfig()
   if (!cfg.enabled) throw new Error('未配置 AI 识别')
   const small = await shrinkImage(dataUrl, 768)
-  const resp = await fetch(cfg.baseUrl, {
+  const resp = await fetchWithFallback(cfg.baseUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + cfg.apiKey
     },
-    body: JSON.stringify({
-      model: cfg.model,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: PROMPT },
-            { type: 'image_url', image_url: { url: small } }
-          ]
-        }
-      ],
-      temperature: 0.1,
-      max_tokens: 300
-    })
+    body: buildBody(cfg, [
+      { type: 'text', text: PROMPT },
+      { type: 'image_url', image_url: { url: small } }
+    ], 800)
   })
   if (!resp.ok) {
     const text = await resp.text().catch(() => '')
@@ -134,10 +151,11 @@ export async function recognizeFigure(dataUrl) {
     throw new Error('AI 服务出错（' + resp.status + '）' + (text ? text.slice(0, 80) : ''))
   }
   const data = await resp.json()
-  const content = data && data.choices && data.choices[0] && data.choices[0].message
-    ? data.choices[0].message.content
-    : ''
-  const parsed = parseAnswer(content)
+  const msg = data && data.choices && data.choices[0] && data.choices[0].message
+    ? data.choices[0].message
+    : {}
+  // 思考型模型可能把结果写在 content，极端情况下只剩 reasoning_content，都做兜底解析
+  const parsed = parseAnswer(msg.content) || parseAnswer(msg.reasoning_content)
   if (!parsed || (!parsed.name && !parsed.series && !parsed.ip)) return null
   return parsed
 }
